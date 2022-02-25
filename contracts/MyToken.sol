@@ -1,22 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library SafeMath {
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b <= a, "SafeMath: subtraction overflow");
-        uint256 c = a - b;
-
-        return c;
-    }
-}
-
 contract MyToken {
 
     using SafeMath for uint;
@@ -72,7 +56,7 @@ contract MyToken {
         allowed[msg.sender][_spender] = allowed[msg.sender][_spender].sub(_amount);
     }
 
-    function transferFrom(address _sender, address _recipient, uint _amount) public { // Переводим со счёта _sender га счёт _recipient _amoun токенов
+    function transferFrom(address _sender, address _recipient, uint _amount) public { // Переводим со счёта _sender на счёт _recipient _amoun токенов
         require(balance[_sender] >= _amount && allowed[_sender][msg.sender] >= _amount, "Insufficient funds");
         balance[_sender] = balance[_sender].sub(_amount);
         balance[_recipient] = balance[_recipient].add(_amount);
