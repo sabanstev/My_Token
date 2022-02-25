@@ -3,34 +3,42 @@ pragma solidity ^0.8.0;
 
 contract MyToken {
 
-    using SafeMath for uint;
-
     address owner; // Адрес владельца контракта
-    string public constant name = "MyToken";
-    string public constant symbol = "MTK";
-    uint8 public constant decimals = 2; // Количество знаков после запятой для токена
+    string public name; // Имя токена
+    string public symbol; // Краткое название
+    uint8 public decimals; // Количество знаков после запятой для токена
     uint public totalSupply; // Общее количество токенов
+
     mapping(address => uint) balance; // Здесь храним сколько у кого токенов
     mapping(address => mapping(address => uint)) allowed; // Храним разрешения на перевод токенов
 
-    constructor() {
+    event Transfer(address indexed _from, address indexed _to, uint _amount);
+    event Approval(address indexed _from, address indexed _to, uint _amount);
+
+    constructor(string memory _name, string memory _symbol, uint8 _decimals, address _to, uint _totalSupply) {
         owner = msg.sender; // Запоминаем владельца контракта
+
+        name = _name; // Запоминаем имя
+        symbol = _symbol; // Краткое название
+        decimals = _decimals; // Устанавливаем количество знаков после запятой
+
+        mint(_to, _totalSupply); // Генерим _totalSupply токенов на адрес _to
     }
 
-    modifier isOwner() {
+    modifier onlyOwner() {
         require(msg.sender == owner, "Caller is not owner"); // Модификатор для использования функции только владельцем контракта
         _;
     }
 
-    function mint (address _to, uint _amount) public isOwner { // Функция создания новых токенов, добавлеет заданое количество токенов на заданный адрес
-        balance[_to] = balance[_to].add(_amount);
-        totalSupply = totalSupply.add(_amount);
+    function mint (address _to, uint _amount) public onlyOwner { // Функция создания новых токенов, добавлеет заданое количество токенов на заданный адрес
+        balance[_to] += _amount;
+        totalSupply += _amount;
     }
 
-    function burn (address _from, uint256 _amount) public isOwner { // Уничтожаем указанное кол-во токенов на указанном адресе
+    function burn (address _from, uint256 _amount) public onlyOwner { // Уничтожаем указанное кол-во токенов на указанном адресе
         require(balance[_from] >= _amount, "Insufficient funds");
-        balance[_from] = balance[_from].sub(_amount);
-        totalSupply = totalSupply.sub(_amount);
+        balance[_from] -= _amount;
+        totalSupply -= _amount;
     }
 
     function balanceOf(address _user) public view returns(uint) { // Возвращаем значение сколько токенов на балансе
@@ -39,12 +47,14 @@ contract MyToken {
 
     function transfer(address _recipient, uint _amount) public { // Переводим токены со счёта вызывающего на указанный адрес
         require(balance[msg.sender] >= _amount, "Insufficient funds");
-        balance[msg.sender] = balance[msg.sender].sub(_amount);
-        balance[_recipient] += balance[_recipient].add(_amount);
+        balance[msg.sender] -= _amount;
+        balance[_recipient] += _amount;
+        emit Transfer(msg.sender, _recipient,_amount);
     }
 
     function approve(address _spender, uint _amount) public { // Устанавливаем количество токенов которое может переводить _spendr со счета msg.sender
         allowed[msg.sender][_spender] = _amount;
+        emit Approval(msg.sender, _spender, _amount);
     }
 
     function increaseAllowance(address _spender, uint _amount) public { // Увеличиваем кол-во токенов доступных для перевода
@@ -52,15 +62,16 @@ contract MyToken {
     }
 
     function decreaseAllowance(address _spender, uint _amount) public { // Уменьшаем кол-во токенов доступных для перевода
-        require (allowed[msg.sender][_spender] >= _amount, "Insufficient funds");
-        allowed[msg.sender][_spender] = allowed[msg.sender][_spender].sub(_amount);
+        require (allowed[msg.sender][_spender] >= _amount);
+        allowed[msg.sender][_spender] -= _amount;
     }
 
-    function transferFrom(address _sender, address _recipient, uint _amount) public { // Переводим со счёта _sender на счёт _recipient _amoun токенов
+    function transferFrom(address _sender, address _recipient, uint _amount) public { // Переводим со счёта _sender га счёт _recipient _amoun токенов
         require(balance[_sender] >= _amount && allowed[_sender][msg.sender] >= _amount, "Insufficient funds");
-        balance[_sender] = balance[_sender].sub(_amount);
-        balance[_recipient] = balance[_recipient].add(_amount);
-        allowed[_sender][msg.sender] = allowed[_sender][msg.sender].sub(_amount);
+        balance[_sender] -= _amount;
+        balance[_recipient] += _amount;
+        allowed[_sender][msg.sender] -= _amount;
+        emit Transfer(_sender, _recipient,_amount);
     }
 
     function allowance(address _owner, address _sender) public view returns(uint) { // Сколько _sender может перевести со счёта _owner
